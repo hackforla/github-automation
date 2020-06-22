@@ -43,21 +43,23 @@ async function commit () {
   console.log(res)
 }
 
-class Cherp {
+class Cherp extends Octokit {
   constructor(opts) {
-    this.opts = opts || {'userAgent': 'cherp'}
-    this.auth = this.opts.GITHUB_TOKEN || process.env.GITHUB_TOKEN
-    this.userAgent = this.opts.userAgent
-    this.logger = LOGGER
+    super({
+      auth: opts.GITHUB_TOKEN || process.env.GITHUB_TOKEN,
+      userAgent: opts.userAgent || 'cherp',
+      logger: opts.logger || LOGGER,
+      ...opts
+    })
+    this.opts = opts
     this.owner = this.opts.githubOrg || this.opts.owner || process.env.GITHUB_ORG
-    this.client = new Octokit({auth: this.auth, userAgent: this.userAgent, logger: this.logger})
   }
   async listAllReposMissingLicense () {
     try {
-      var { data }  = await this.client.repos.listForOrg({ org: this.owner })
-      console.log('got repos', data.map(r => ({ id: r.id, name: r.name, full_name: r.full_name })));
+      var { data }  = await this.repos.listForOrg({ org: this.owner })
+      LOGGER.info('got repos', data.map(r => ({ id: r.id, name: r.name, full_name: r.full_name })));
     } catch (err) {
-      this.logger.error('Error listing all repos missing license: ', err)
+      LOGGER.error('Error listing all repos missing license: ', err)
       process.exit(1)
     }
   }
@@ -66,11 +68,41 @@ class Cherp {
         \nSee: https:\/\/spdx.org/licenses/ for the list of accecpted ids`
 
     if (!spdxLicenseList.has(_license)) {
-      this.logger.error(errMsg)
+      LOGGER.error(errMsg)
       process.exit(1)
     }
   }
-  createPullRequest(repo) {
+  async _createBlob (repo, file) {
+    try {
+      $
+    } catch (err) {
+      /* handle error */
+    }
+  }
+  async _createCommit (repo) {
+  }
+  async _createRef (repo) {
+    /** _createRef
+     * create a git ref on a repo
+     */
+    try { 
+      let { sha } = await this._createCommit(repo)
+      const { data } = await this.git.createRef({ owner: this.owner, repo: repo, ref: 'refs/heads/cherp-add-file' })
+    } catch (err) {
+    }
+  }
+  async createPullRequest(repo) {
+    try {
+      var { ref } = await this._createRef(repo)
+
+      var { data } = await this.pulls.create({
+        owner: this.owner,
+        repo: repo,
+        title: 'Adding a file to this repo :bird:',
+      })
+    } catch (err) {
+    }
+    
   }
   addFile (args) {
     /**
@@ -79,7 +111,7 @@ class Cherp {
      * @param args - Object
      */
     if (args.repo === undefined) {
-      this.logger.error('RepoError: no repo name provided.\nUsage:\n\tcherp add-file --repo my-repo')
+      LOGGER.error('RepoError: no repo name provided.\nUsage:\n\tcherp add-file --repo my-repo')
       process.exit(1)
     }
     if (args.license !== undefined) {
