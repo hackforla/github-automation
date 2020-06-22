@@ -1,0 +1,31 @@
+{
+  "name": "check-repo",
+  "version": "1.0.0",
+  "description": "utilities for checking github repos look their best",
+  "main": "index.js",
+  "dependencies": {
+    "@octokit/rest": "^18.0.0",
+    "minimist": "^1.2.5",
+    "spdx-license-list": "^6.2.0"
+  },
+  "devDependencies": {
+    "dotenv": "^8.2.0",
+    "standard": "^14.3.4",
+    "tap-spec": "^5.0.0",
+    "tape": "^5.0.1"
+  },
+  "bin": {
+    "cherp": "./index"
+  },
+  "scripts": {
+    "test": "node tests/test.js",
+    "start": "$npm_package_bin_cherp"
+  },
+  "keywords": [
+    "github",
+    "lint",
+    "octokit"
+  ],
+  "author": "hackforla",
+  "license": "GPL-2.0"
+}
