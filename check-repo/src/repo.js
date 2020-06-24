@@ -49,9 +49,14 @@ class Cherp extends Octokit {
     /**
     * list commits on a repo
     */
-    var { data } = await client.repos.listCommits({ owner: this.owner, repo: repo, per_page: 3 });
-    let res = data.map(d => ({sha: d.sha, tree: d.commit.tree.sha }))
-    return res[0]
+    try {
+      var { data } = await client.repos.listCommits({ owner: this.owner, repo: repo, per_page: 3 });
+      let res = data.map(d => ({sha: d.sha, tree: d.commit.tree.sha }))
+      LOGGER.info(`Get Latest Commit: on ${repo}, commit: ${JSON.stringify(res[0])}`)
+      return res[0]
+    } catch (err) {
+      LOGGER.error("getLatestCommit error: ", err)
+    }
   }
   async listAllReposMissingLicense () {
     try {
@@ -67,6 +72,7 @@ class Cherp extends Octokit {
         \nSee: https:\/\/spdx.org/licenses/ for the list of accecpted ids`
 
     if (!spdxLicenseList.has(_license)) {
+      // check this is a recongized SPDX license id
       LOGGER.error(errMsg)
       return process.exit(1)
     }
@@ -124,27 +130,35 @@ class Cherp extends Octokit {
   async createTree (repo, repoFilePath, blobSha) {
     /** create a git tree from a git blob object contents
      */
-    let { data } = await this.git.createTree({
-      owner: this.owner,
-      repo: repo,
-      tree: [
-        { path: repoFilePath, mode: '100644', type: 'blob', sha: blobSha }
-      ]
-    })
-    LOGGER.info(`Created tree with sha ${data.sha}, filename: ${repoFilePath}, blob: ${blobSha}`);
-    return data
+    try {
+      let parents = await this.getLatestCommit(repo)
+      let { data } = await this.git.createTree({
+        owner: this.owner,
+        repo: repo,
+        tree: [
+          { path: repoFilePath, mode: '100644', type: 'blob', sha: blobSha }
+        ],
+        base_tree: parents.sha
+      })
+      LOGGER.info(`Created tree with sha ${data.sha}, filename: ${repoFilePath}, blob: ${blobSha}`);
+      return data
+    } catch (err) {
+      LOGGER.error("creatTree error: ", err)
+    }
   }
 
   async _createCommit (repo, treeSha, msg) {
     /** create a commit object from the tree SHA
      */
+    let parents = await this.getLatestCommit(repo)
+    LOGGER.info(`createCommit from parents commit object: ${JSON.stringify(parents)}`)
     try {
       let { data } = await this.git.createCommit({
         owner: this.owner, 
         repo: repo,
         message: msg || 'bot user: automated commit',
         tree: treeSha,
-        parents: [], // omit parents for now to create a root commit...
+        parents: [parents.sha],
         author: {
           name: 'cherp',
           email:'automation@beepboop.org',
@@ -182,16 +196,16 @@ class Cherp extends Octokit {
         ref: `refs/${cherpRef}`,
         sha: refSha
       })
-      LOGGER.info('Create Ref success: ', data)
+      LOGGER.info(`Create Ref success: ref url: ${data.object.url}`)
       return data
     } catch (err) {
       if (err.status === 422) {
-        LOGGER.info(`Create Ref error; status: ${err.status}, type: ${err.name}, trying again...`)
+        LOGGER.info(err)
+        LOGGER.warn(`Create Ref error; status: ${err.status}, type: ${err.name}, trying again...`)
         // the ref already exists
         // delete it and try again
         let deleteRef = await this.git.deleteRef({ owner: this.owner, repo: repo, ref: cherpRef })
         return this._createRef(repo, branchSha)
-        // LOGGER.debug(err)
       }
       LOGGER.error("Create Ref Error: ", err)
     }
@@ -201,10 +215,10 @@ class Cherp extends Octokit {
       var { data } = await this.pulls.create({
         owner: this.owner,
         repo: repo,
-        title: 'Adding a file to this repo :bird:',
+        title: '🐦 Adding a file to this repo 🐦',
         head: refBranch,
         base: 'master',
-        body: `# summary\n hello :wave:. I am opening this PR to add a file that's good to have in a repo. Please feel free to ignore this. I'm just a script so if I am broken please open an issue in [hackforla/github-automation](https://github.com/hackforla/github-automation).`
+        body: `# summary\n hello :wave:. I am opening this PR to add a file that's good to have in a repo. Please feel free to ignore this.\nI'm just a script so if I am broken please open an issue in [hackforla/github-automation](https://github.com/hackforla/github-automation).`
       })
 
       LOGGER.debug(`created a PR for pull request: ${data.url}, #${data.number}`)
