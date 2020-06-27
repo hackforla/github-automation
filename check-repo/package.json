@@ -1,8 +1,7 @@
 {
   "name": "check-repo",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "utilities for checking github repos look their best",
-  "main": "index.js",
   "dependencies": {
     "@octokit/rest": "^18.0.0",
     "minimist": "^1.2.5",
@@ -15,12 +14,18 @@
     "tap-spec": "^5.0.0",
     "tape": "^5.0.1"
   },
+  "files": [
+    "index.js"
+  ],
+  "engines": {
+    "node": ">=12"
+  },
   "bin": {
     "cherp": "index.js"
   },
   "scripts": {
     "test": "node tests/test.js | tap-spec",
-    "start": "$npm_package_bin_cherp",
+    "start": "npx ./index.js",
     "lint": "npx standard"
   },
   "keywords": [
@@ -28,6 +33,6 @@
     "lint",
     "octokit"
   ],
-  "author": "hackforla",
+  "author": "Jared Fowler - jared.a.fowler@gmail.com",
   "license": "GPL-2.0"
 }
