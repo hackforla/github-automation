@@ -16,11 +16,12 @@
     "tape": "^5.0.1"
   },
   "bin": {
-    "cherp": "./index"
+    "cherp": "index.js"
   },
   "scripts": {
     "test": "node tests/test.js | tap-spec",
-    "start": "$npm_package_bin_cherp"
+    "start": "$npm_package_bin_cherp",
+    "lint": "npx standard"
   },
   "keywords": [
     "github",

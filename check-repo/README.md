@@ -8,10 +8,9 @@ check that repos have common files
 
 # install
 ```bash
-git clone https://github.com/hackforla/github-automation
-cd check-repo
+git clone https://github.com/hackforla/github-automation ~
+cd ~/github/automation check-repo
 npm i
-cherp --help
 ```
 
 # API
