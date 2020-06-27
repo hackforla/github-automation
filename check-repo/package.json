@@ -21,12 +21,12 @@
     "node": ">=12"
   },
   "bin": {
-    "cherp": "index.js"
+    "cherp": "./bin/cli.js"
   },
   "scripts": {
     "test": "node tests/test.js | tap-spec",
-    "start": "npx ./index.js",
-    "lint": "npx standard"
+    "start": "npx ./bin/index.js",
+    "lint": "npx standard --"
   },
   "keywords": [
     "github",
