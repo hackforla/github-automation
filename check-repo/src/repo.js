@@ -1,9 +1,11 @@
 const { Octokit } = require('@octokit/rest')
 const spdxLicenseList = require('spdx-license-list/simple');
+const noop = function () {}
+
 const LOGGER = {
-  debug: console.dir,
-  info: console.log,
-  warn: console.warn,
+  debug: (msg) => parseInt(process.env.LOG_LEVEL, 10) >= 50 ? console.dir(msg) : noop(),
+  info: (msg) => parseInt(process.env.LOG_LEVEL, 10) >= 40 ? console.log(msg): noop(),
+  warn: (msg) => parseInt(process.env.LOG_LEVEL, 10) >= 30 ? console.warn(msg): noop(),
   error: console.error
 }
 
@@ -12,27 +14,6 @@ const client = new Octokit({
   userAgent: 'cherp',
   log: LOGGER
 })
-
-// async function main () {
-//   try {
-//     var {data} = await client.licenses.getForRepo({ owner: 'hackforla', repo: 'food-oasis'})
-//     console.log(data);
-//   } catch (e) {
-//     if (e.status === 404) {
-//       /* they do not have a LICENSE file..
-//        * -- create a pull request
-//        */
-//     } else {
-//       LOGGER.error(e)
-//       process.exit(1)
-//     }
-//   }
-// }
-
-// async function license () {
-//   var {data} = await client.licenses.get({ license: 'GPL-2.0' });
-//   console.log(data)
-// }
 
 class Cherp extends Octokit {
   constructor(opts) {
@@ -50,7 +31,7 @@ class Cherp extends Octokit {
     * list commits on a repo
     */
     try {
-      var { data } = await client.repos.listCommits({ owner: this.owner, repo: repo, per_page: 3 });
+      var { data } = await this.repos.listCommits({ owner: this.owner, repo: repo, per_page: 3 });
       let res = data.map(d => ({sha: d.sha, tree: d.commit.tree.sha }))
       LOGGER.info(`Get Latest Commit: on ${repo}, commit: ${JSON.stringify(res[0])}`)
       return res[0]
@@ -71,13 +52,13 @@ class Cherp extends Octokit {
     let errMsg = `LicenseError: ${_license} is not a valid SPDX license code.
         \nSee: https:\/\/spdx.org/licenses/ for the list of accecpted ids`
 
+    // check we are given a recongized SPDX license id
     if (!spdxLicenseList.has(_license)) {
-      // check this is a recongized SPDX license id
       LOGGER.error(errMsg)
-      return process.exit(1)
+      return
     }
     try {
-      /** todo
+      /**
        * get the license body
        * make blob
        * get tree the latest commit on default branch
@@ -94,8 +75,8 @@ class Cherp extends Octokit {
       let { sha } = await this._createBlob(repo, licenseBlob.data.body)
       LOGGER.debug(`created blob from license file; sha: ${sha}`)
 
-      // make a tree 
-      let treeResponse = await this.createTree(repo, 'LICENSE', sha) 
+      // make a tree
+      let treeResponse = await this.createTree(repo, 'LICENSE', sha)
 
       // commit it
       let commitResponse = await this._createCommit(repo, treeResponse.sha)
@@ -105,6 +86,7 @@ class Cherp extends Octokit {
 
       // open a PR
       let res = await this.createPullRequest(repo, refResponse.data.ref)
+      return res
     } catch (err) {
       LOGGER.error('Error adding license:', err)
     }
@@ -143,18 +125,19 @@ class Cherp extends Octokit {
       LOGGER.info(`Created tree with sha ${data.sha}, filename: ${repoFilePath}, blob: ${blobSha}`);
       return data
     } catch (err) {
-      LOGGER.error("creatTree error: ", err)
+      LOGGER.error("createTree error: ", err)
     }
   }
 
   async _createCommit (repo, treeSha, msg) {
-    /** create a commit object from the tree SHA
+    /**
+     * create a commit object from the tree SHA
      */
     let parents = await this.getLatestCommit(repo)
     LOGGER.info(`createCommit from parents commit object: ${JSON.stringify(parents)}`)
     try {
       let { data } = await this.git.createCommit({
-        owner: this.owner, 
+        owner: this.owner,
         repo: repo,
         message: msg || 'bot user: automated commit',
         tree: treeSha,
@@ -179,8 +162,8 @@ class Cherp extends Octokit {
      */
 
     // hardcoded branch name for branches made by Cherp
-    const cherpRef = 'heads/cherp-add-file' 
-    try { 
+    const cherpRef = 'heads/cherp-add-file'
+    try {
       let refSha = ''
       if (branchSha === '') {
         // we should just get the latest commit on HEAD to create ref from
@@ -190,14 +173,14 @@ class Cherp extends Octokit {
         refSha = branchSha
       }
 
-      const data  = await this.git.createRef({
+      const res  = await this.git.createRef({
         owner: this.owner,
         repo: repo,
         ref: `refs/${cherpRef}`,
         sha: refSha
       })
-      LOGGER.info(`Create Ref success: ref url: ${data.object.url}`)
-      return data
+      LOGGER.info(`success: createRef, ref_url: ${res.data.object.url}`)
+      return res
     } catch (err) {
       if (err.status === 422) {
         LOGGER.info(err)
@@ -222,11 +205,11 @@ class Cherp extends Octokit {
       })
 
       LOGGER.debug(`created a PR for pull request: ${data.url}, #${data.number}`)
-
+      return data
     } catch (err) {
-      LOGGER.error(err)
+      LOGGER.error('error: createPullRequest, ', err)
     }
-    
+
   }
   addFile (args) {
     /**
@@ -246,4 +229,4 @@ class Cherp extends Octokit {
   }
 }
 
-module.exports = function (opts) { return new Cherp(opts) }
+module.exports = Cherp
