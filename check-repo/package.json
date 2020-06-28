@@ -1,6 +1,6 @@
 {
-  "name": "check-repo",
-  "version": "0.1.0",
+  "name": "cherp",
+  "version": "0.1.0-alpha.2",
   "description": "utilities for checking github repos look their best",
   "dependencies": {
     "@octokit/rest": "^18.0.0",
@@ -15,7 +15,9 @@
     "tape": "^5.0.1"
   },
   "files": [
-    "cherp.js"
+    "cherp.js",
+    "src/*",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=12"
@@ -26,7 +28,7 @@
   "scripts": {
     "test": "node tests/test.js | tap-spec",
     "start": "./cherp.js",
-    "lint": "npx standard --"
+    "lint": "npx standard -- "
   },
   "keywords": [
     "github",

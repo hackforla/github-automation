@@ -36,7 +36,7 @@ class Cherp extends Octokit {
       return res[0]
     } catch (err) {
       LOGGER.error('error: getLatestCommit;', err)
-			LOGGER.debug(err)
+      LOGGER.debug(err)
     }
   }
 
@@ -49,7 +49,7 @@ class Cherp extends Octokit {
      */
     try {
       const _org = org || this.owner
-      var res  = await this.repos.listForOrg({ org: _org })
+      var res = await this.repos.listForOrg({ org: _org })
       var repos = res.data.map(r => ({ id: r.id, name: r.name, full_name: r.full_name }))
       return repos
     } catch (err) {
@@ -69,12 +69,10 @@ class Cherp extends Octokit {
     const errMsg = `LicenseError: ${_license} is not a valid SPDX license code.
         \nSee: https://spdx.org/licenses/ for the list of accecpted ids`
 
-
-
     // check we are given a recongized SPDX license id
     // and throw if not.
     if (!spdxLicenseList.has(_license.toUpperCase())) {
-      LOGGER.error('error: addLicense;', {name: 'licenseError', status: 400, message: errMsg})
+      LOGGER.error('error: addLicense;', { name: 'licenseError', status: 400, message: errMsg })
       return
     }
     try {
@@ -231,7 +229,7 @@ class Cherp extends Octokit {
      * @param {String} refBranch - the name of the ref
      * @returns {Object} - the api response of the pull request
      */
-    let _msg = msg ||  '# summary\n hello :wave:. I am opening this PR to add a file that\'s good to have in a repo. Please feel free to ignore this.\nI\'m just a script so if I am broken please open an issue in [hackforla/github-automation](https://github.com/hackforla/github-automation).'
+    const _msg = msg || '# summary\n hello :wave:. I am opening this PR to add a file that\'s good to have in a repo. Please feel free to ignore this.\nI\'m just a script so if I am broken please open an issue in [hackforla/github-automation](https://github.com/hackforla/github-automation).'
     try {
       var { data } = await this.pulls.create({
         owner: this.owner,
@@ -259,7 +257,7 @@ class Cherp extends Octokit {
         throw Error('No repo name provided.\nUsage:\n\tcherp add-file --repo=my-repo')
       }
       if (args.license !== undefined) {
-        let res = await this._addLicense(args.repo, args.license)
+        const res = await this._addLicense(args.repo, args.license)
         LOGGER.info(res)
       } else {
         throw Error('NotImplemented')

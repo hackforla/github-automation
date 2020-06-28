@@ -53,7 +53,7 @@ test('it should add a license', async function (t) {
 })
 
 test('test CLI', function (t) {
-  t.plan(5)
+  t.plan(6)
   cp.exec(`${CMD} -h`, (err, result) => {
     t.error(err, 'does not throw error')
     t.ok(/Usage:/.test(result), 'it should print usage from -h')
@@ -65,6 +65,7 @@ test('test CLI', function (t) {
   })
 
   cp.exec(`${CMD} add-file`, (err, result) => {
+    t.error(err, 'it should not err')
     t.ok(/Error: No repo name provided/.test(result), 'it should error if no options provided')
   })
 })

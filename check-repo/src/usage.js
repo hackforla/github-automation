@@ -1,5 +1,3 @@
-const LOGGER = require('./logger.js')
-
 module.exports = usage
 
 function usage () {
