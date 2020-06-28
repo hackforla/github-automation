@@ -49,9 +49,9 @@ class Cherp extends Octokit {
      */
     try {
       const _org = org || this.owner
-      var { data } = await this.repos.listForOrg({ org: _org })
-      LOGGER.info('got repos', data.map(r => ({ id: r.id, name: r.name, full_name: r.full_name })))
-      return data
+      var res  = await this.repos.listForOrg({ org: _org })
+      var repos = res.data.map(r => ({ id: r.id, name: r.name, full_name: r.full_name }))
+      return repos
     } catch (err) {
       LOGGER.error('Error listing all repos missing license: ', err)
     }

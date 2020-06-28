@@ -25,7 +25,7 @@
   },
   "scripts": {
     "test": "node tests/test.js | tap-spec",
-    "start": "npx ./bin/index.js",
+    "start": "LOG_LEVEL=40 npx ./bin/cli.js",
     "lint": "npx standard --"
   },
   "keywords": [
