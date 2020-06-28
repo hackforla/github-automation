@@ -33,10 +33,10 @@ class Cherp extends Octokit {
     try {
       var { data } = await this.repos.listCommits({ owner: this.owner, repo: repo, per_page: 3 })
       const res = data.map(d => ({ sha: d.sha, tree: d.commit.tree.sha }))
-      LOGGER.info(`Get Latest Commit: on ${repo}, commit: ${JSON.stringify(res[0])}`)
       return res[0]
     } catch (err) {
-      LOGGER.error('getLatestCommit error: ', err)
+      LOGGER.error('error: getLatestCommit;', err)
+			LOGGER.debug(err)
     }
   }
 
@@ -53,7 +53,7 @@ class Cherp extends Octokit {
       var repos = res.data.map(r => ({ id: r.id, name: r.name, full_name: r.full_name }))
       return repos
     } catch (err) {
-      LOGGER.error('Error listing all repos missing license: ', err)
+      LOGGER.error('error: listAllReposMissingLicense;', err)
     }
   }
 
@@ -69,20 +69,20 @@ class Cherp extends Octokit {
     const errMsg = `LicenseError: ${_license} is not a valid SPDX license code.
         \nSee: https://spdx.org/licenses/ for the list of accecpted ids`
 
+
+
     // check we are given a recongized SPDX license id
     // and throw if not.
-    if (!spdxLicenseList.has(_license)) {
-      LOGGER.error(errMsg)
+    if (!spdxLicenseList.has(_license.toUpperCase())) {
+      LOGGER.error('error: addLicense;', {name: 'licenseError', status: 400, message: errMsg})
       return
     }
     try {
       // get the license body
       const licenseBlob = await this.licenses.get({ license: _license })
-      LOGGER.info(`adding license file for ${licenseBlob.data.key}`)
 
       // make a blob
       const { sha } = await this._createBlob(repo, licenseBlob.data.body)
-      LOGGER.debug(`created blob from license file; sha: ${sha}`)
 
       // make a tree
       const treeResponse = await this.createTree(repo, 'LICENSE', sha)
@@ -94,8 +94,7 @@ class Cherp extends Octokit {
       const refResponse = await this._createRef(repo, commitResponse.sha)
 
       // open a PR from that branch
-      const res = await this.createPullRequest(repo, refResponse.data.ref)
-      return res
+      return await this.createPullRequest(repo, refResponse.data.ref)
     } catch (err) {
       LOGGER.error('Error adding license:', err)
     }
@@ -109,17 +108,16 @@ class Cherp extends Octokit {
      * @returns {Object} the create blob api response
      */
     try {
-      LOGGER.info(`creating blob on owner: ${this.owner}, repo: ${repo}, file ${file.slice(0, 15)}`)
       const response = await this.git.createBlob({
         owner: this.owner,
         repo,
         content: file,
         encoding: 'utf-8'
       })
-      LOGGER.debug(`Created blob with sha: ${response.data.sha}`)
       return response.data
     } catch (err) {
-      LOGGER.error('Create Blob Error: ', err)
+      LOGGER.error('error _createBlob;', err)
+      LOGGER.debug(err)
       return err
     }
   }
@@ -143,10 +141,12 @@ class Cherp extends Octokit {
         ],
         base_tree: parents.sha
       })
-      LOGGER.info(`Created tree with sha ${data.sha}, filename: ${repoFilePath}, blob: ${blobSha}`)
+      LOGGER.debug(`Created tree with sha ${data.sha}, filename: ${repoFilePath}, blob: ${blobSha}`)
       return data
     } catch (err) {
-      LOGGER.error('createTree error: ', err)
+      LOGGER.error('createTree error', err)
+      LOGGER.debug(err)
+      process.exit(1)
     }
   }
 
@@ -159,7 +159,7 @@ class Cherp extends Octokit {
      * @returns {Object} response of API call to create commit
      */
     const parents = await this.getLatestCommit(repo)
-    LOGGER.info(`createCommit from parents commit object: ${JSON.stringify(parents)}`)
+    LOGGER.debug(`createCommit from parents commit object: ${JSON.stringify(parents)}`)
     try {
       const { data } = await this.git.createCommit({
         owner: this.owner,
@@ -213,14 +213,14 @@ class Cherp extends Octokit {
       return res
     } catch (err) {
       if (err.status === 422) {
-        LOGGER.info(err)
         LOGGER.warn(`Create Ref error; status: ${err.status}, type: ${err.name}, trying again...`)
         // the ref already exists
         // delete it and try again
         await this.git.deleteRef({ owner: this.owner, repo: repo, ref: cherpRef })
         return this._createRef(repo, branchSha)
       }
-      LOGGER.error('Create Ref Error: ', err)
+      LOGGER.error('error: createRef;', err)
+      LOGGER.debug(err)
     }
   }
 
@@ -231,6 +231,7 @@ class Cherp extends Octokit {
      * @param {String} refBranch - the name of the ref
      * @returns {Object} - the api response of the pull request
      */
+    let _msg = msg ||  '# summary\n hello :wave:. I am opening this PR to add a file that\'s good to have in a repo. Please feel free to ignore this.\nI\'m just a script so if I am broken please open an issue in [hackforla/github-automation](https://github.com/hackforla/github-automation).'
     try {
       var { data } = await this.pulls.create({
         owner: this.owner,
@@ -238,30 +239,34 @@ class Cherp extends Octokit {
         title: '🐦 Adding a file to this repo 🐦',
         head: refBranch,
         base: 'master',
-        body: '# summary\n hello :wave:. I am opening this PR to add a file that\'s good to have in a repo. Please feel free to ignore this.\nI\'m just a script so if I am broken please open an issue in [hackforla/github-automation](https://github.com/hackforla/github-automation).'
+        body: _msg
       })
-
-      LOGGER.debug(`created a PR for pull request: ${data.url}, #${data.number}`)
       return data
     } catch (err) {
       LOGGER.error('error: createPullRequest, ', err)
+      LOGGER.debug(err)
     }
   }
 
-  addFile (args) {
+  async addFile (args) {
     /**
      * open a PR to target repo to add a file.
      * takes some known files via options or a path
      * @param args - Object
      */
-    if (args.repo === undefined) {
-      LOGGER.error('RepoError: no repo name provided.\nUsage:\n\tcherp add-file --repo my-repo')
-      process.exit(1)
-    }
-    if (args.license !== undefined) {
-      return this._addLicense(args.repo, args.license)
-    } else {
-      throw Error('NotImplemented')
+    try {
+      if (args.repo === undefined) {
+        throw Error('No repo name provided.\nUsage:\n\tcherp add-file --repo=my-repo')
+      }
+      if (args.license !== undefined) {
+        let res = await this._addLicense(args.repo, args.license)
+        LOGGER.info(res)
+      } else {
+        throw Error('NotImplemented')
+      }
+    } catch (err) {
+      console.log(err)
+      return err
     }
   }
 }
