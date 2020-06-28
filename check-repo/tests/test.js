@@ -1,7 +1,11 @@
 const test = require('tape')
 const sinon = require('sinon')
-
+const cp = require('child_process')
+const path = require('path')
 const Cherp = require('../src/repo')
+
+const CMD_PATH = path.resolve(__dirname, '..', 'cherp.js')
+const CMD = `node ${CMD_PATH}`
 
 test('it should boot', (t) => {
   t.plan(1)
@@ -46,4 +50,21 @@ test('it should add a license', async function (t) {
   const test1 = await cherp._addLicense('test', 'unrecognized-license-key')
   t.notOk(test1, 'should exit with error on unrecognized license')
   t.end()
+})
+
+test('test CLI', function (t) {
+  t.plan(5)
+  cp.exec(`${CMD} -h`, (err, result) => {
+    t.error(err, 'does not throw error')
+    t.ok(/Usage:/.test(result), 'it should print usage from -h')
+  })
+
+  cp.exec(`${CMD} --help`, (err, result) => {
+    t.error(err, 'does not throw error')
+    t.ok(/Usage:/.test(result), 'it should print usage from --help')
+  })
+
+  cp.exec(`${CMD} add-file`, (err, result) => {
+    t.ok(/Error: No repo name provided/.test(result), 'it should error if no options provided')
+  })
 })
